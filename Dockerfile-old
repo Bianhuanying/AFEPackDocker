@@ -17,6 +17,12 @@ COPY deal.ii_6.3.1.modified.tar.gz /root/Pkg/deal.ii_6.3.1.modified.tar.gz
 
 ## prepare deal.II AFEPack easymesh 
 RUN \
+cd /usr/local/include && \
+ln -s ~/Pkg/deal.II/deal.II/include/ . && \
+ln -s ~/Pkg/deal.II/lac/include/lac/ . && \
+ln -s ~/Pkg/deal.II/base/include/base/ . && \
+cd /usr/local/lib && \
+ln -s ~/Pkg/deal.II/lib/lib* . && \
 cd /root/Pkg && \
 wget http://dsec.pku.edu.cn/~rli/AFEPack-snapshot.tar.gz && \
 wget http://dsec.pku.edu.cn/~rli/source_code/easymesh.c.gz && \
