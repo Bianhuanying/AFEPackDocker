@@ -8,7 +8,8 @@ RUN \
   # use aliyun's mirror for better download speed
   sed -i 's/archive.ubuntu.com/mirrors.aliyun.com/g' /etc/apt/sources.list && \
   apt-get update && \
-  apt-get install -y make automake autoconf wget build-essential \
+  apt-get install --no-install-recommends --no-install-suggests -y \
+  make automake autoconf wget build-essential \
   libdeal.ii-dev mpi-default-dev nano # libhypre-dev trilinos-all-dev petsc-dev --no-install-recommends
 
 ## set some env varibles
@@ -25,7 +26,8 @@ gunzip easymesh.c.gz && \
 cat /root/Pkg/env.txt >> /root/.bashrc && . /root/.bashrc && \
 cd /root/Pkg/AFEPack && \
 ln -s /usr/lib/x86_64-linux-gnu/libdeal.ii.g.so.8.1.0 /usr/lib/x86_64-linux-gnu/libdeal_II.g.so && \
-ln -s /usr/lib/x86_64-linux-gnu/libdeal.ii.so.8.1.0  /usr/lib/x86_64-linux-gnu/libdeal_II.so && \ 
+ln -s /usr/lib/x86_64-linux-gnu/libdeal.ii.so.8.1.0  /usr/lib/x86_64-linux-gnu/libdeal_II.so && \
+sed -i "s/-std=c++14/-std=c++11/g" configure.ac && \
 aclocal && autoconf && automake --add-missing && \
 env EXTRA_INCDIR="-I/usr/include/deal.II/" EXTRA_LIBDIR="-L/usr/lib/x86_64-linux-gnu/" ./configure && \
 # make -j8 && make install
@@ -36,6 +38,7 @@ cd /root/Pkg/ && \
 gcc -o easymesh easymesh.c -lm && \
 mv ./easymesh /usr/local/bin/ && \
 ## do some clean work
+rm -rf /root/Pkg/AFEPack/library/obj/*o && \
 rm easymesh.c AFEPack-snapshot.tar.gz env.txt && \
 rm -rf /var/lib/apt/lists/*
 

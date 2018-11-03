@@ -1,0 +1,85 @@
+FROM ubuntu:14.04 AS builder
+
+MAINTAINER FSSlc, liuchang011235 AT gmail DOT com
+
+## install essential packages
+RUN \
+mkdir /root/Pkg && \
+## use aliyun's mirror for better download speed
+sed -i 's/archive.ubuntu.com/mirrors.aliyun.com/g' /etc/apt/sources.list && \
+apt-get update && \
+apt-get install --no-install-recommends --no-install-suggests -y \
+make automake autoconf wget build-essential libboost-dev \
+mpi-default-dev mpi-default-bin openmpi-bin libtbb-dev nano
+## libhypre-dev trilinos-all-dev petsc-dev
+
+## copy source packages
+COPY env.txt /root/Pkg/env.txt 
+COPY deal.II-6.3.1-updated.tar.gz /root/Pkg/deal.II-6.3.1-updated.tar.gz
+COPY AFEPack-snapshot.tar.gz /root/Pkg/AFEPack-snapshot.tar.gz
+COPY easymesh.c.gz /root/Pkg/easymesh.c.gz
+
+## get source packages and compile dealii 6.3.1, easymesh
+RUN cd /root/Pkg && \
+## decompression source files
+tar -xzf ./deal.II-6.3.1-updated.tar.gz -C /root/Pkg && \
+tar -xzf ./AFEPack-snapshot.tar.gz -C /root/Pkg/ && \
+gunzip easymesh.c.gz && \
+## clean pkgs
+rm AFEPack-snapshot.tar.gz deal.II-6.3.1-updated.tar.gz && \
+## compile deal.ii 6.3.1
+cd /root/Pkg/deal.II && ./configure --enable-threads && make baseo laco -j9 && \
+rm -rf ./lib/lac/* && \
+rm -rf ./lib/base/* && \
+rm -rf ./lib/contrib/* && \
+rm -rf ./contrib && \
+rm -rf ./examples && \
+rm -rf ./doc && \
+## link dealii include directory and lib
+cd /usr/local/include && \
+ln -s /root/Pkg/deal.II/deal.II/include . && \
+ln -s /root/Pkg/deal.II/lac/include/lac . && \
+ln -s /root/Pkg/deal.II/base/include/base . && \
+cd /usr/local/lib && ln -s /root/Pkg/deal.II/lib/lib* . && \
+## compile and install easymesh
+cd /root/Pkg/ && \
+gcc -o easymesh easymesh.c -lm && \
+mv ./easymesh /usr/local/bin/ && \
+rm easymesh.c && \
+## compile and install AFEPack
+cat /root/Pkg/env.txt >> /root/.bashrc && . /root/.bashrc && rm env.txt && \
+cd /root/Pkg/AFEPack && \
+sed -i "s/-std=c++14/-std=c++11/g" configure.ac && \
+aclocal && autoconf && automake --add-missing && \
+env EXTRA_INCDIR="-I/root/Pkg/deal.II/base/include -I/root/Pkg/deal.II/lac/include" \
+    EXTRA_LIBDIR="-L/root/Pkg/deal.II/lib -L/usr/lib/x86_64-linux-gnu/" ./configure && \
+# make -j9 && make install && \
+cd ./template/ && make -j9 && \
+cd ../library/ && make -j9 && make install && \
+cd ../example/ && make -j9 && \
+## do some clean work
+rm -rf /root/Pkg/AFEPack/library/obj/*o && \
+apt-get clean autoclean && \
+apt-get autoremove -y && \
+rm -rf /var/lib/{apt,dpkg,cache,log} && \
+rm -rf /var/cache/apt 
+
+FROM ubuntu:14.04
+## install essential packages
+RUN \
+mkdir /root/Pkg && \
+## use aliyun's mirror for better download speed
+sed -i 's/archive.ubuntu.com/mirrors.aliyun.com/g' /etc/apt/sources.list && \
+apt-get update && \
+apt-get install --no-install-recommends --no-install-suggests -y \
+make build-essential libboost-dev \
+mpi-default-dev mpi-default-bin openmpi-bin libtbb-dev nano && \
+## do some clean work
+apt-get clean autoclean && \
+apt-get autoremove -y && \
+rm -rf /var/lib/{apt,dpkg,cache,log} && \
+rm -rf /var/cache/apt 
+
+COPY --from=builder /root /root
+COPY --from=builder /usr/local/ /usr/local
+CMD ["/bin/bash"]
